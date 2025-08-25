@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatGPT風チャット</title>
+  <!-- 外部CSSファイルを読み込む -->
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- 左側のサイドバー -->
+  <div class="sidebar">
+    <h3>ルーム</h3>
+    <button id="new-chat-btn">新規チャット</button>
+    <ul id="rooms"></ul>
+  </div>
+
+  <!-- 右側のメインチャット画面 -->
+  <div class="main-chat">
+    <!-- メッセージが表示されるエリア -->
+    <div id="chat"></div>
+    <!-- メッセージ入力エリア -->
+    <div class="input-area">
+      <input id="prompt" placeholder="メッセージを入力..." /><button id="send-btn">送信</button>
+    </div>
+  </div>
+
+  <!-- 外部JavaScriptファイルを読み込む (bodyの最後に置くのが定石) -->
+  <script src="/static/script.js"></script>
+</body>
+</html>

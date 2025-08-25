@@ -94,7 +94,7 @@ def stream_messages(room_id):
         full_response_ja = ""
         try:
             stream = openai.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5-nano",
                 messages=messages_history,
                 stream=True
             )

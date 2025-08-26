@@ -362,3 +362,103 @@ async function confirmRename() {
         }
     } catch (error) {
         console.error('名称変更に失敗しました:', error);
+    }
+
+    hideRenameModal();
+}
+
+/**
+ * 削除確認モーダルを表示
+ */
+function showDeleteModal() {
+    hideContextMenu();
+    if (!contextMenuTarget) return;
+    deleteModal.classList.add('show');
+}
+
+/**
+ * 削除確認モーダルを非表示
+ */
+function hideDeleteModal() {
+    deleteModal.classList.remove('show');
+}
+
+/**
+ * 削除を確定
+ */
+async function confirmDelete() {
+    if (!contextMenuTarget) return;
+
+    try {
+        const response = await fetch(`/rooms/${contextMenuTarget}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            // 削除されたルームが現在選択中の場合、チャット画面をクリア
+            if (window.currentRoom === contextMenuTarget) {
+                window.currentRoom = null;
+                chatWindow.innerHTML = '';
+                exportHtmlBtn.disabled = true;
+                exportManualBtn.disabled = true;
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            }
+            await loadRooms();
+        }
+    } catch (error) {
+        console.error('削除に失敗しました:', error);
+    }
+
+    hideDeleteModal();
+}
+
+/**
+ * チャット内容をHTML形式でエクスポート
+ */
+async function exportAsHtml() {
+    if (!window.currentRoom) return;
+
+    try {
+        const response = await fetch(`/rooms/${window.currentRoom}/export/html`);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chat_${window.currentRoom}_${new Date().getTime()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('HTML出力に失敗しました:', error);
+        alert('HTML出力に失敗しました');
+    }
+}
+
+/**
+ * チャット内容をマニュアル形式でエクスポート
+ */
+async function exportAsManual() {
+    if (!window.currentRoom) return;
+
+    try {
+        const response = await fetch(`/rooms/${window.currentRoom}/export/manual`);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `manual_${window.currentRoom}_${new Date().getTime()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('マニュアル出力に失敗しました:', error);
+        alert('マニュアル出力に失敗しました');
+    }
+}

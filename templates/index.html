@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ChatGPT</title>
-  <!-- 外部CSSファイルを読み込む -->
+  <meta name="description" content="ChatGPT風のチャットUI。ルーム管理・履歴保存・HTML出力対応。">
+  <title>ChatGPT風チャット</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -13,20 +13,20 @@
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <h3>ルーム</h3>
-      <button id="toggle-sidebar-btn" class="toggle-btn">≡</button>
+      <button id="toggle-sidebar-btn" class="toggle-btn" aria-label="サイドバーの表示切替">≡</button>
     </div>
     <button id="new-chat-btn">新規チャット</button>
     <ul id="rooms"></ul>
   </div>
 
-  <!-- サイドバー切り替えボタン（サイドバーが非表示の時に表示） -->
+  <!-- サイドバー切り替えボタン（非表示時） -->
   <div class="sidebar-toggle-hidden" id="sidebar-toggle-hidden">
-    <button id="show-sidebar-btn" class="toggle-btn">≡</button>
+    <button id="show-sidebar-btn" class="toggle-btn" aria-label="サイドバーを表示">≡</button>
   </div>
 
   <!-- 右側のメインチャット画面 -->
   <div class="main-chat" id="main-chat">
-    <!-- ヘッダーエリア -->
+    <!-- ヘッダー -->
     <div class="chat-header">
       <div class="chat-actions">
         <button id="export-html-btn" class="action-btn" disabled>HTML出力</button>
@@ -34,13 +34,14 @@
       </div>
     </div>
 
-    <!-- メッセージが表示されるエリア -->
+    <!-- メッセージエリア -->
     <div id="chat"></div>
 
-    <!-- メッセージ入力エリア -->
-    <div class="input-area">
-      <input id="prompt" placeholder="メッセージを入力..." /><button id="send-btn">送信</button>
-    </div>
+    <!-- 入力エリア -->
+    <form class="input-area" id="chat-form">
+      <input id="prompt" placeholder="メッセージを入力..." aria-label="メッセージを入力">
+      <button id="send-btn" type="submit">送信</button>
+    </form>
   </div>
 
   <!-- コンテキストメニュー -->
@@ -50,9 +51,9 @@
   </div>
 
   <!-- 名称変更モーダル -->
-  <div id="rename-modal" class="modal">
+  <div id="rename-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="rename-modal-title">
     <div class="modal-content">
-      <h3>ルーム名変更</h3>
+      <h3 id="rename-modal-title">ルーム名変更</h3>
       <input type="text" id="rename-input" placeholder="新しい名前を入力">
       <div class="modal-buttons">
         <button id="rename-confirm">変更</button>
@@ -62,9 +63,9 @@
   </div>
 
   <!-- 削除確認モーダル -->
-  <div id="delete-modal" class="modal">
+  <div id="delete-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
     <div class="modal-content">
-      <h3>削除確認</h3>
+      <h3 id="delete-modal-title">削除確認</h3>
       <p>このチャットルームを削除しますか？</p>
       <div class="modal-buttons">
         <button id="delete-confirm">削除</button>
@@ -73,7 +74,6 @@
     </div>
   </div>
 
-  <!-- 外部JavaScriptファイルを読み込む (bodyの最後に置くのが定石) -->
   <script src="/static/script.js"></script>
 </body>
 </html>

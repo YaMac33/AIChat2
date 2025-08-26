@@ -1,118 +1,139 @@
-import os
-import uuid
-import datetime
+from flask import Flask, render_template, request, jsonify, Response, send_file
+from flask_cors import CORS
+from datetime import datetime
 import json
-from flask import Flask, render_template, request, jsonify, Response
-import openai
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+import time
+import io
 
-# ===== 設定 =====
-# (この部分は変更なし)
-openai.api_key = os.environ["OPENAI_API_KEY"]
-scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
-creds_dict = {
-    "type": os.environ["GCP_TYPE"],
-    "project_id": os.environ["GCP_PROJECT_ID"],
-    "private_key_id": os.environ["GCP_PRIVATE_KEY_ID"],
-    "private_key": os.environ["GCP_PRIVATE_KEY"].replace("\\n", "\n"),
-    "client_email": os.environ["GCP_CLIENT_EMAIL"],
-    "client_id": os.environ["GCP_CLIENT_ID"],
-    "auth_uri": os.environ["GCP_AUTH_URI"],
-    "token_uri": os.environ["GCP_TOKEN_URI"],
-    "auth_provider_x509_cert_url": os.environ["GCP_AUTH_PROVIDER_X509_CERT_URL"],
-    "client_x509_cert_url": os.environ["GCP_CLIENT_X509_CERT_URL"]
-}
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-client = gspread.authorize(creds)
-sheet_rooms = client.open("ChatLogs").worksheet("rooms")
-sheet_msgs = client.open("ChatLogs").worksheet("messages")
+app = Flask(__name__, static_folder="static", template_folder="templates")
+CORS(app)
 
-app = Flask(__name__)
+# メモリ上にルームとメッセージを保持（本番はDBを推奨）
+rooms = []
+messages = {}  # room_id -> list of {role, content_ja, created_at}
 
-# ===== ユーティリティ =====
+# ID採番用カウンタ
+room_counter = 1
 
-# ★★★ 変更点 1: translate_to_en 関数を完全に削除 ★★★
-# (translate_to_en関数はここにあった)
-
-def save_room(title):
-    room_id = str(uuid.uuid4())
-    now = datetime.datetime.now().isoformat()
-    sheet_rooms.append_row([room_id, title, now, now])
-    return room_id
-
-# ★★★ 変更点 2: save_message 関数をシンプル化 ★★★
-def save_message(room_id, role, content_ja):
-    msg_id = str(uuid.uuid4())
-    now = datetime.datetime.now().isoformat()
-    # 英語訳のカラムには空文字("")を保存する
-    sheet_msgs.append_row([msg_id, room_id, role, content_ja, "", now])
-    return msg_id
-
-# ===== APIエンドポイント =====
-# (GET系とルーム作成のAPIは変更なし)
 @app.route("/")
 def index():
     return render_template("index.html")
 
+
+# =============================
+# ルーム関連API
+# =============================
 @app.route("/rooms", methods=["GET"])
 def get_rooms():
-    rows = sheet_rooms.get_all_values()[1:]
-    data = [{"id": r[0], "title": r[1]} for r in rows]
-    return jsonify(data)
+    return jsonify(rooms)
+
 
 @app.route("/rooms", methods=["POST"])
 def create_room():
-    title = request.json.get("title", "New Chat")
-    room_id = save_room(title)
-    return jsonify({"room_id": room_id})
+    global room_counter
+    data = request.get_json()
+    title = data.get("title", f"新規チャット{room_counter}")
+    room_id = str(room_counter)
+    room_counter += 1
+    new_room = {"id": room_id, "title": title, "created_at": datetime.now().isoformat()}
+    rooms.append(new_room)
+    messages[room_id] = []
+    return jsonify(new_room)
 
+
+@app.route("/rooms/<room_id>", methods=["PUT"])
+def update_room(room_id):
+    data = request.get_json()
+    title = data.get("title")
+    for r in rooms:
+        if r["id"] == room_id:
+            r["title"] = title
+            return jsonify({"status": "ok", "id": room_id, "title": title})
+    return jsonify({"error": "not found"}), 404
+
+
+@app.route("/rooms/<room_id>", methods=["DELETE"])
+def delete_room(room_id):
+    global rooms, messages
+    rooms = [r for r in rooms if r["id"] != room_id]
+    if room_id in messages:
+        del messages[room_id]
+    return jsonify({"status": "deleted"})
+
+
+# =============================
+# メッセージ関連API
+# =============================
 @app.route("/rooms/<room_id>/messages", methods=["GET"])
 def get_messages(room_id):
-    rows = sheet_msgs.get_all_values()[1:]
-    msgs = [r for r in rows if r[1] == room_id]
-    data = [{"role": r[2], "content_ja": r[3]} for r in msgs]
-    return jsonify(data)
+    return jsonify(messages.get(room_id, []))
 
-# ★★★ 変更点 3: ユーザーメッセージ保存時の翻訳呼び出しを削除 ★★★
+
 @app.route("/rooms/<room_id>/messages", methods=["POST"])
-def post_user_message(room_id):
-    prompt = request.json.get("prompt")
-    # 翻訳をせずに日本語プロンプトのみ保存
-    save_message(room_id, "user", prompt)
+def add_message(room_id):
+    data = request.get_json()
+    prompt = data.get("prompt", "")
+    msg_user = {
+        "role": "user",
+        "content_ja": prompt,
+        "created_at": datetime.now().isoformat()
+    }
+    messages[room_id].append(msg_user)
+    # 仮のAI応答を追加（本番ではストリーム出力に置き換え）
+    msg_assistant = {
+        "role": "assistant",
+        "content_ja": f"これはAIの応答です: {prompt}",
+        "created_at": datetime.now().isoformat()
+    }
+    messages[room_id].append(msg_assistant)
     return jsonify({"status": "ok"})
 
-# ★★★ 変更点 4: ストリーム配信後の翻訳呼び出しを削除 ★★★
-@app.route("/rooms/<room_id>/messages-stream", methods=["GET"])
-def stream_messages(room_id):
 
+@app.route("/rooms/<room_id>/messages-stream")
+def stream_message(room_id):
     def generate():
-        all_msgs_rows = sheet_msgs.get_all_values()[1:]
-        past_msgs = [row for row in all_msgs_rows if row[1] == room_id]
-        messages_history = [{"role": r[2], "content": r[3]} for r in past_msgs]
+        text = "これはストリーミング応答です"
+        for c in text:
+            time.sleep(0.05)
+            yield f"data: {json.dumps({'text': c})}\n\n"
+        yield f"data: {json.dumps({'text': '', 'done': True})}\n\n"
+    return Response(generate(), mimetype="text/event-stream")
 
-        full_response_ja = ""
-        try:
-            stream = openai.chat.completions.create(
-                model="gpt-5-nano",
-                messages=messages_history,
-                stream=True
-            )
-            for chunk in stream:
-                content = chunk.choices[0].delta.content or ""
-                if content:
-                    full_response_ja += content
-                    yield f"data: {json.dumps({'text': content})}\n\n"
 
-            # AIの回答を翻訳せずに日本語のまま保存
-            save_message(room_id, "assistant", full_response_ja)
+# =============================
+# 出力API（HTML / マニュアル）
+# =============================
+@app.route("/rooms/<room_id>/export/html")
+def export_html(room_id):
+    # ルーム履歴をHTML化してダウンロード
+    html = "<html><body>"
+    html += f"<h1>チャットルーム {room_id}</h1>"
+    for m in messages.get(room_id, []):
+        role = "ユーザー" if m["role"] == "user" else "アシスタント"
+        content = m["content_ja"].replace("<", "&lt;").replace(">", "&gt;")
+        html += f"<p><b>{role}</b>: {content}</p>"
+    html += "</body></html>"
 
-        except Exception as e:
-            error_message = f"エラーが発生しました: {type(e).__name__}"
-            yield f"data: {json.dumps({'error': error_message})}\n\n"
+    buf = io.BytesIO(html.encode("utf-8"))
+    buf.seek(0)
+    return send_file(buf, mimetype="text/html",
+                     as_attachment=True,
+                     download_name=f"chat_{room_id}.html")
 
-    return Response(generate(), mimetype='text/event-stream')
+
+@app.route("/rooms/<room_id>/export/manual")
+def export_manual(room_id):
+    # 簡易的にテキストマニュアル化
+    text = f"### チャットルーム {room_id} の記録\n\n"
+    for m in messages.get(room_id, []):
+        role = "ユーザー" if m["role"] == "user" else "アシスタント"
+        text += f"{role}: {m['content_ja']}\n"
+    buf = io.BytesIO(text.encode("utf-8"))
+    buf.seek(0)
+    return send_file(buf, mimetype="text/plain",
+                     as_attachment=True,
+                     download_name=f"manual_{room_id}.txt")
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=5000, debug=True)

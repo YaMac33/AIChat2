@@ -184,32 +184,11 @@ async function sendMessage() {
     };
 }
 
-function escapeHTML(str) {
-    return str.replace(/&/g, "&amp;")
-              .replace(/</g, "&lt;")
-              .replace(/>/g, "&gt;")
-              .replace(/"/g, "&quot;")
-              .replace(/'/g, "&#039;");
-}
-
 function formatMessageContent(text) {
-    // HTMLを一度完全にエスケープ
-    const safe = escapeHTML(text);
-
-    // コードブロックを <pre><code> に変換＋コピーアイコン
-    return safe
-        .replace(/```([\s\S]*?)```/g, (_, code) =>
-            `<div class="code-block">
-                <button class="copy-code-btn" onclick="copyToClipboard(\`${escapeBackticks(code)}\`)">📋</button>
-                <pre><code>${code}</code></pre>
-            </div>`
-        )
+    return text
+        .replace(/```([\s\S]*?)```/g, '<pre>$1</pre>')
         .replace(/`([^`\n]+)`/g, '<code>$1</code>')
-        .replace(/\n/g, '<br>');
-}
-
-function escapeBackticks(str) {
-    return str.replace(/`/g, "\\`");
+        .replace(/\n/g, '<br>'); // preタグ内はHTMLがそのまま維持される
 }
 
 function appendMessage(role, text, timestamp = null) {
@@ -222,12 +201,6 @@ function appendMessage(role, text, timestamp = null) {
         messageDiv.innerText = text;
     } else {
         messageDiv.innerHTML = formatMessageContent(text);
-        // 全体コピー用ボタン
-        const copyAllBtn = document.createElement("button");
-        copyAllBtn.innerText = "コピー";
-        copyAllBtn.classList.add("copy-all-btn");
-        copyAllBtn.onclick = () => copyToClipboard(text);
-        container.appendChild(copyAllBtn);
     }
 
     const timestampDiv = document.createElement("div");
@@ -239,14 +212,6 @@ function appendMessage(role, text, timestamp = null) {
     chatWindow.appendChild(container);
     chatWindow.scrollTop = chatWindow.scrollHeight;
     return container;
-}
-
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        alert("コピーしました！");
-    }).catch(err => {
-        console.error("コピーに失敗:", err);
-    });
 }
 
 function formatTimestamp(date) {
@@ -289,7 +254,7 @@ async function confirmRename() {
 
     try {
         const response = await fetch(`/rooms/${ChatApp.contextMenuTarget}`, {
-            method: 'PUT', // PUT に統一
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title: newName })
         });

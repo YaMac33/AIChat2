@@ -4,9 +4,14 @@ from datetime import datetime
 import json
 import time
 import io
+import os  # ← 追加
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
-CORS(app)
+CORS(app)  # ← 必要に応じて有効化
+
+# 起動時に環境変数 PORT を取得（Render対応）
+port = int(os.environ.get("PORT", 5000))
+
 
 # メモリ上にルームとメッセージを保持（本番はDBを推奨）
 rooms = []
@@ -136,4 +141,4 @@ def export_manual(room_id):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=True)

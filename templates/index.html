@@ -10,66 +10,19 @@
 <body>
 
   <!-- 左側のサイドバー -->
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <h3>ルーム</h3>
-      <button id="toggle-sidebar-btn" class="toggle-btn">≡</button>
-    </div>
+  <div class="sidebar">
+    <h3>ルーム</h3>
     <button id="new-chat-btn">新規チャット</button>
     <ul id="rooms"></ul>
   </div>
 
-  <!-- サイドバー切り替えボタン（サイドバーが非表示の時に表示） -->
-  <div class="sidebar-toggle-hidden" id="sidebar-toggle-hidden">
-    <button id="show-sidebar-btn" class="toggle-btn">≡</button>
-  </div>
-
   <!-- 右側のメインチャット画面 -->
-  <div class="main-chat" id="main-chat">
-    <!-- ヘッダーエリア -->
-    <div class="chat-header">
-      <div class="chat-actions">
-        <button id="export-html-btn" class="action-btn" disabled>HTML出力</button>
-        <button id="export-manual-btn" class="action-btn" disabled>マニュアル出力</button>
-      </div>
-    </div>
-    
+  <div class="main-chat">
     <!-- メッセージが表示されるエリア -->
     <div id="chat"></div>
-    
     <!-- メッセージ入力エリア -->
     <div class="input-area">
       <input id="prompt" placeholder="メッセージを入力..." /><button id="send-btn">送信</button>
-    </div>
-  </div>
-
-  <!-- コンテキストメニュー -->
-  <div id="context-menu" class="context-menu">
-    <div class="context-menu-item" id="rename-room">名称変更</div>
-    <div class="context-menu-item" id="delete-room">削除</div>
-  </div>
-
-  <!-- 名称変更モーダル -->
-  <div id="rename-modal" class="modal">
-    <div class="modal-content">
-      <h3>ルーム名変更</h3>
-      <input type="text" id="rename-input" placeholder="新しい名前を入力">
-      <div class="modal-buttons">
-        <button id="rename-confirm">変更</button>
-        <button id="rename-cancel">キャンセル</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 削除確認モーダル -->
-  <div id="delete-modal" class="modal">
-    <div class="modal-content">
-      <h3>削除確認</h3>
-      <p>このチャットルームを削除しますか？</p>
-      <div class="modal-buttons">
-        <button id="delete-confirm">削除</button>
-        <button id="delete-cancel">キャンセル</button>
-      </div>
     </div>
   </div>
 
